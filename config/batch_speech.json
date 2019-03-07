@@ -1,0 +1,3 @@
+audio_sas_url = 'https://bdlcognitivesstorage.blob.core.windows.net/batchaudio/AHA_0278008BAF2019021712345501.wav?sp=r&st=2019-03-06T17:15:19Z&se=2019-03-07T01:15:19Z&spr=https&sv=2018-03-28&sig=DRlJKT9h%2Fur0hig2A%2Bw8l%2FQ3FX9lEbMyfkb7R264I8E%3D&sr=b'
+speech_service_region = 'eastus2' ## i.e. eastus2
+speech_service_key = '580816688abc425fbf009510c8f9dea3'
