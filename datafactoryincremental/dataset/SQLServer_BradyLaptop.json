@@ -1,0 +1,28 @@
+{
+	"name": "SQLServer_BradyLaptop",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "SQLServer_BradyLaptop",
+			"type": "LinkedServiceReference"
+		},
+		"type": "SqlServerTable",
+		"structure": [
+			{
+				"name": "id",
+				"type": "String"
+			},
+			{
+				"name": "datetime",
+				"type": "String"
+			},
+			{
+				"name": "value",
+				"type": "Double"
+			}
+		],
+		"typeProperties": {
+			"tableName": "[dbo].[telemetry_2]"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

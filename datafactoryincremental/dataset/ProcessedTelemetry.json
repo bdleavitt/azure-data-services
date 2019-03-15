@@ -1,0 +1,38 @@
+{
+	"name": "ProcessedTelemetry",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "BlobStorageAccount",
+			"type": "LinkedServiceReference"
+		},
+		"type": "AzureBlob",
+		"structure": [
+			{
+				"name": "id",
+				"type": "String"
+			},
+			{
+				"name": "datetime",
+				"type": "String"
+			},
+			{
+				"name": "value",
+				"type": "Double"
+			}
+		],
+		"typeProperties": {
+			"format": {
+				"type": "JsonFormat",
+				"filePattern": "setOfObjects",
+				"jsonPathDefinition": {
+					"id": "$.['id']",
+					"datetime": "$.['datetime']",
+					"value": "$.['value']"
+				}
+			},
+			"fileName": "",
+			"folderPath": "processed"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

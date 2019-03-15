@@ -1,0 +1,56 @@
+{
+	"name": "Telemetry_Blob_TimePartitioned",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "BlobStorageAccount",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"StartTime": {
+				"type": "String",
+				"defaultValue": null
+			},
+			"EndTime": {
+				"type": "String",
+				"defaultValue": null
+			}
+		},
+		"type": "AzureBlob",
+		"structure": [
+			{
+				"name": "id",
+				"type": "String"
+			},
+			{
+				"name": "datetime",
+				"type": "String"
+			},
+			{
+				"name": "value",
+				"type": "Double"
+			}
+		],
+		"typeProperties": {
+			"format": {
+				"type": "JsonFormat",
+				"filePattern": "setOfObjects",
+				"jsonPathDefinition": {
+					"id": "$.['id']",
+					"datetime": "$.['datetime']",
+					"value": "$.['value']"
+				}
+			},
+			"fileName": "",
+			"folderPath": "timepartitionedtelemetry",
+			"modifiedDatetimeStart": {
+				"value": "@formatDateTime(dataset().StartTime)",
+				"type": "Expression"
+			},
+			"modifiedDatetimeEnd": {
+				"value": "@formatDateTime(dataset().EndTime)",
+				"type": "Expression"
+			}
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

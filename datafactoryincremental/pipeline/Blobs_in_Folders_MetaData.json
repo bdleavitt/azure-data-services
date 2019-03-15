@@ -1,0 +1,54 @@
+{
+	"name": "Blobs_in_Folders_MetaData",
+	"properties": {
+		"activities": [
+			{
+				"name": "Copy_Data_In_Folders",
+				"type": "Copy",
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"typeProperties": {
+					"source": {
+						"type": "BlobSource",
+						"recursive": true
+					},
+					"sink": {
+						"type": "BlobSink",
+						"copyBehavior": "PreserveHierarchy"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"columnMappings": {
+							"id": "id",
+							"datetime": "datetime",
+							"value": "value"
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "Telemetry_Blob_TimePartitioned",
+						"type": "DatasetReference",
+						"parameters": {
+							"StartTime": "2019-03-15T14:10:00Z",
+							"EndTime": "2019-03-15T14:12:00Z"
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ProcessedTelemetry",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		]
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

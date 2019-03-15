@@ -1,0 +1,6 @@
+{
+	"name": "IntergrationRuntime-BradyLaptop",
+	"properties": {
+		"type": "SelfHosted"
+	}
+}

@@ -1,0 +1,56 @@
+{
+	"name": "Telemetry",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "BlobStorageAccount",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"StartTime": {
+				"type": "String",
+				"defaultValue": "NULL"
+			},
+			"EndTime": {
+				"type": "String",
+				"defaultValue": "NULL"
+			}
+		},
+		"type": "AzureBlob",
+		"structure": [
+			{
+				"name": "id",
+				"type": "String"
+			},
+			{
+				"name": "datetime",
+				"type": "String"
+			},
+			{
+				"name": "value",
+				"type": "Double"
+			}
+		],
+		"typeProperties": {
+			"format": {
+				"type": "JsonFormat",
+				"filePattern": "setOfObjects",
+				"jsonPathDefinition": {
+					"id": "$.['id']",
+					"datetime": "$.['datetime']",
+					"value": "$.['value']"
+				}
+			},
+			"fileName": "",
+			"folderPath": "flathierarchytelemetry",
+			"modifiedDatetimeStart": {
+				"value": "@if(not(equals(dataset().StartTime, NULL)), formatDateTime(dataset().StartTime), NULL)",
+				"type": "Expression"
+			},
+			"modifiedDatetimeEnd": {
+				"value": "@if(not(equals(dataset().EndTime, NULL)), formatDateTime(dataset().EndTime), NULL)",
+				"type": "Expression"
+			}
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

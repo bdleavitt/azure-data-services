@@ -1,0 +1,103 @@
+{
+	"name": "CopyIncrementalTelemetry",
+	"properties": {
+		"activities": [
+			{
+				"name": "CopyIncrementalTelmetry",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Set Stoptime",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"typeProperties": {
+					"source": {
+						"type": "BlobSource",
+						"recursive": false
+					},
+					"sink": {
+						"type": "SqlSink",
+						"writeBatchSize": 10000
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"columnMappings": "id: id, datetime: datetime, value: value"
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "Telemetry",
+						"type": "DatasetReference",
+						"parameters": {
+							"StartTime": {
+								"value": "@if(equals(variables('StartProcessingTime'), NULL), NULL, variables('StartProcessingTime'))",
+								"type": "Expression"
+							},
+							"EndTime": {
+								"value": "@if(equals(variables('StopProcessingTime'), NULL), NULL, variables('StopProcessingTime'))",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "SQLServer_BradyLaptop",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Set Stoptime",
+				"type": "SetVariable",
+				"typeProperties": {
+					"variableName": "StopProcessingTime",
+					"value": {
+						"value": "@formatDateTime(pipeline().TriggerTime)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Set Next Start Time",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "CopyIncrementalTelmetry",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"typeProperties": {
+					"variableName": "StartProcessingTime",
+					"value": {
+						"value": "@variables('StopProcessingTime')",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"variables": {
+			"StartProcessingTime": {
+				"type": "String",
+				"defaultValue": "2019-03-14T19:38:00Z"
+			},
+			"StopProcessingTime": {
+				"type": "String"
+			}
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
