@@ -1,0 +1,408 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory Name"
+		},
+		"SQLServer_BradyLaptop": {
+			"type": "string"
+		},
+		"BlobStorageAccount": {
+			"type": "string"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/Copy_Incremental_With_Watermark')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Get Last Run Watermark",
+						"type": "Lookup",
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"typeProperties": {
+							"source": {
+								"type": "SqlSource",
+								"sqlReaderQuery": "select * from watermarktable"
+							},
+							"dataset": {
+								"referenceName": "WatermarkTable",
+								"type": "DatasetReference"
+							},
+							"firstRowOnly": true
+						}
+					},
+					{
+						"name": "Copy Data to Blob",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Set Stoptime",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"typeProperties": {
+							"source": {
+								"type": "BlobSource",
+								"recursive": true
+							},
+							"sink": {
+								"type": "BlobSink",
+								"copyBehavior": "PreserveHierarchy"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"columnMappings": {
+									"id": "id",
+									"datetime": "datetime",
+									"value": "value"
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "Telemetry_Blob_TimePartitioned",
+								"type": "DatasetReference",
+								"parameters": {
+									"StartTime": {
+										"value": "@variables('StartTime')",
+										"type": "Expression"
+									},
+									"EndTime": {
+										"value": "@variables('EndTime')",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ProcessedTelemetry",
+								"type": "DatasetReference"
+							}
+						]
+					},
+					{
+						"name": "Set Starttime",
+						"description": "Get the watermark from the last run, this will be the start of the next window. ",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Get Last Run Watermark",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"typeProperties": {
+							"variableName": "StartTime",
+							"value": {
+								"value": "@activity('Get Last Run Watermark').output.firstRow.WatermarkValue",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Set Stoptime",
+						"description": "Get the trigger time for the pipeline run. Files modified before this time will be copied. ",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Set Starttime",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"typeProperties": {
+							"variableName": "EndTime",
+							"value": {
+								"value": "@pipeline().TriggerTime",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Update Watermark",
+						"description": "The new watermark is the latest pipeline start for the watermark. ",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Copy Data To SQL Incremental",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"typeProperties": {
+							"storedProcedureName": "[concat('[', 'dbo].[update_watermark]')]",
+							"storedProcedureParameters": {
+								"LastModifiedtime": {
+									"value": {
+										"value": "@variables('EndTime')",
+										"type": "Expression"
+									},
+									"type": "DateTime"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "[parameters('SQLServer_BradyLaptop')]",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Copy Data To SQL Incremental",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Set Stoptime",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"typeProperties": {
+							"source": {
+								"type": "BlobSource",
+								"recursive": true
+							},
+							"sink": {
+								"type": "SqlSink",
+								"writeBatchSize": 10000
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"columnMappings": {
+									"id": "id",
+									"datetime": "datetime",
+									"value": "value"
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "Telemetry_Blob_TimePartitioned",
+								"type": "DatasetReference",
+								"parameters": {
+									"StartTime": {
+										"value": "@variables('StartTime')",
+										"type": "Expression"
+									},
+									"EndTime": {
+										"value": "@variables('EndTime')",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "SQLServer_BradyLaptop",
+								"type": "DatasetReference"
+							}
+						]
+					}
+				],
+				"variables": {
+					"StartTime": {
+						"type": "String"
+					},
+					"EndTime": {
+						"type": "String"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/WatermarkTable')]",
+				"[concat(variables('factoryId'), '/datasets/Telemetry_Blob_TimePartitioned')]",
+				"[concat(variables('factoryId'), '/datasets/ProcessedTelemetry')]",
+				"[concat(variables('factoryId'), '/datasets/SQLServer_BradyLaptop')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/WatermarkTable')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('SQLServer_BradyLaptop')]",
+					"type": "LinkedServiceReference"
+				},
+				"type": "SqlServerTable",
+				"structure": [
+					{
+						"name": "WatermarkValue",
+						"type": "DateTime"
+					}
+				],
+				"typeProperties": {
+					"tableName": "[concat('[', 'dbo].[watermarktable]')]"
+				}
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Telemetry_Blob_TimePartitioned')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('BlobStorageAccount')]",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"StartTime": {
+						"type": "String",
+						"defaultValue": null
+					},
+					"EndTime": {
+						"type": "String",
+						"defaultValue": null
+					}
+				},
+				"type": "AzureBlob",
+				"structure": [
+					{
+						"name": "id",
+						"type": "String"
+					},
+					{
+						"name": "datetime",
+						"type": "String"
+					},
+					{
+						"name": "value",
+						"type": "Double"
+					}
+				],
+				"typeProperties": {
+					"format": {
+						"type": "JsonFormat",
+						"filePattern": "setOfObjects",
+						"jsonPathDefinition": {
+							"id": "$.['id']",
+							"datetime": "$.['datetime']",
+							"value": "$.['value']"
+						}
+					},
+					"fileName": "",
+					"folderPath": "timepartitionedtelemetry",
+					"modifiedDatetimeStart": {
+						"value": "@formatDateTime(dataset().StartTime)",
+						"type": "Expression"
+					},
+					"modifiedDatetimeEnd": {
+						"value": "@formatDateTime(dataset().EndTime)",
+						"type": "Expression"
+					}
+				}
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ProcessedTelemetry')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('BlobStorageAccount')]",
+					"type": "LinkedServiceReference"
+				},
+				"type": "AzureBlob",
+				"structure": [
+					{
+						"name": "id",
+						"type": "String"
+					},
+					{
+						"name": "datetime",
+						"type": "String"
+					},
+					{
+						"name": "value",
+						"type": "Double"
+					}
+				],
+				"typeProperties": {
+					"format": {
+						"type": "JsonFormat",
+						"filePattern": "setOfObjects",
+						"jsonPathDefinition": {
+							"id": "$.['id']",
+							"datetime": "$.['datetime']",
+							"value": "$.['value']"
+						}
+					},
+					"fileName": "",
+					"folderPath": "processed"
+				}
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SQLServer_BradyLaptop')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('SQLServer_BradyLaptop')]",
+					"type": "LinkedServiceReference"
+				},
+				"type": "SqlServerTable",
+				"structure": [
+					{
+						"name": "id",
+						"type": "String"
+					},
+					{
+						"name": "datetime",
+						"type": "String"
+					},
+					{
+						"name": "value",
+						"type": "Double"
+					}
+				],
+				"typeProperties": {
+					"tableName": "[concat('[', 'dbo].[telemetry_2]')]"
+				}
+			}
+		}
+	]
+}
