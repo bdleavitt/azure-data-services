@@ -2,7 +2,7 @@
 	"name": "Telemetry_SpecificBlob",
 	"properties": {
 		"linkedServiceName": {
-			"referenceName": "BlobStorageAccount",
+			"referenceName": "AzureBlobStorage1",
 			"type": "LinkedServiceReference"
 		},
 		"parameters": {
