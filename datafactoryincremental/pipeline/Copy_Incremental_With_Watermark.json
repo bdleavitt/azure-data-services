@@ -54,12 +54,8 @@
 					"enableStaging": false,
 					"dataIntegrationUnits": 16,
 					"translator": {
-						"type": "TabularTranslator",
-						"columnMappings": {
-							"id": "id",
-							"datetime": "datetime",
-							"value": "value"
-						}
+						"value": "@json('{\n                            \"id\": \"id\",\n                            \"datetime\": utcnow(),\n                            \"value\": \"value\"\n                        }')",
+						"type": "Expression"
 					}
 				},
 				"inputs": [
