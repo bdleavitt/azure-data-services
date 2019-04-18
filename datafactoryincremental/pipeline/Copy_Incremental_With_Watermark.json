@@ -54,8 +54,12 @@
 					"enableStaging": false,
 					"dataIntegrationUnits": 16,
 					"translator": {
-						"value": "@json('{\n                            \"id\": \"id\",\n                            \"datetime\": \"variables(ServerTime)\",\n                            \"value\": \"variables(MadeUpValue)\"\n                        }')",
-						"type": "Expression"
+						"type": "TabularTranslator",
+						"columnMappings": {
+							"id": "id",
+							"datetime": "datetime",
+							"value": "value"
+						}
 					}
 				},
 				"inputs": [
