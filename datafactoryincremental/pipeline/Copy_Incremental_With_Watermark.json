@@ -49,7 +49,7 @@
 					},
 					"sink": {
 						"type": "BlobSink",
-						"copyBehavior": "MergeFiles"
+						"copyBehavior": "PreserveHierarchy"
 					},
 					"enableStaging": false,
 					"dataIntegrationUnits": 16,
