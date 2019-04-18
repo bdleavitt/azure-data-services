@@ -1,0 +1,54 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "bdl-data-factory"
+		},
+		"integrationRuntime_IntergrationRuntime-BradyLaptop": {
+			"value": "IntergrationRuntime-BradyLaptop"
+		},
+		"AzureBlobStorage1_connectionString": {
+			"value": ""
+		},
+		"BDLSQLServer_connectionString": {
+			"value": ""
+		},
+		"ProcessedTelemetry_properties_typeProperties_fileName": {
+			"value": ""
+		},
+		"ProcessedTelemetry_properties_typeProperties_folderPath": {
+			"value": "processed"
+		},
+		"Telemetry_properties_typeProperties_fileName": {
+			"value": ""
+		},
+		"Telemetry_properties_typeProperties_folderPath": {
+			"value": "flathierarchytelemetry"
+		},
+		"Telemetry_Blob_properties_typeProperties_fileName": {
+			"value": ""
+		},
+		"Telemetry_Blob_properties_typeProperties_folderPath": {
+			"value": "flathierarchytelemetry"
+		},
+		"Telemetry_Blob_TimePartitioned_properties_typeProperties_fileName": {
+			"value": ""
+		},
+		"Telemetry_Blob_TimePartitioned_properties_typeProperties_folderPath": {
+			"value": "timepartitionedtelemetry"
+		},
+		"Telemetry_SpecificBlob_properties_typeProperties_fileName": {
+			"value": "@dataset().FileName"
+		},
+		"Telemetry_SpecificBlob_properties_typeProperties_folderPath": {
+			"value": "flathierarchytelemetry"
+		},
+		"containerUri": {
+			"value": ""
+		},
+		"containerSasToken": {
+			"value": ""
+		}
+	}
+}

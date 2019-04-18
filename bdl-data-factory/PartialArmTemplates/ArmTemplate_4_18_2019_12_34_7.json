@@ -1,0 +1,782 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory Name",
+			"defaultValue": "bdl-data-factory"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/Blobs_in_Folders_MetaData')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Copy_Data_In_Folders",
+						"type": "Copy",
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"typeProperties": {
+							"source": {
+								"type": "BlobSource",
+								"recursive": true
+							},
+							"sink": {
+								"type": "BlobSink",
+								"copyBehavior": "PreserveHierarchy"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"columnMappings": {
+									"id": "id",
+									"datetime": "datetime",
+									"value": "value"
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "Telemetry_Blob_TimePartitioned",
+								"type": "DatasetReference",
+								"parameters": {
+									"StartTime": "2019-03-15T14:10:00Z",
+									"EndTime": "2019-03-15T14:12:00Z"
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ProcessedTelemetry",
+								"type": "DatasetReference"
+							}
+						]
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/Telemetry_Blob_TimePartitioned')]",
+				"[concat(variables('factoryId'), '/datasets/ProcessedTelemetry')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CopyIncrementalTelemetry')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "CopyIncrementalTelmetry",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Set Stoptime",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"typeProperties": {
+							"source": {
+								"type": "BlobSource",
+								"recursive": false
+							},
+							"sink": {
+								"type": "SqlSink",
+								"writeBatchSize": 10000
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"columnMappings": {
+									"id": "id",
+									"datetime": "datetime",
+									"value": "value"
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "Telemetry",
+								"type": "DatasetReference",
+								"parameters": {
+									"StartTime": {
+										"value": "@if(equals(variables('StartProcessingTime'), NULL), NULL, variables('StartProcessingTime'))",
+										"type": "Expression"
+									},
+									"EndTime": {
+										"value": "@if(equals(variables('StopProcessingTime'), NULL), NULL, variables('StopProcessingTime'))",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "SQLServer_BradyLaptop",
+								"type": "DatasetReference"
+							}
+						]
+					},
+					{
+						"name": "Set Stoptime",
+						"type": "SetVariable",
+						"typeProperties": {
+							"variableName": "StopProcessingTime",
+							"value": {
+								"value": "@formatDateTime(pipeline().TriggerTime)",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Set Next Start Time",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "CopyIncrementalTelmetry",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"typeProperties": {
+							"variableName": "StartProcessingTime",
+							"value": {
+								"value": "@variables('StopProcessingTime')",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"variables": {
+					"StartProcessingTime": {
+						"type": "String",
+						"defaultValue": "2019-03-14T19:38:00Z"
+					},
+					"StopProcessingTime": {
+						"type": "String"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/Telemetry')]",
+				"[concat(variables('factoryId'), '/datasets/SQLServer_BradyLaptop')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Copy_Incremental_With_Watermark')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Get Last Run Watermark",
+						"type": "Lookup",
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"typeProperties": {
+							"source": {
+								"type": "SqlSource",
+								"sqlReaderQuery": "select * from watermarktable"
+							},
+							"dataset": {
+								"referenceName": "WatermarkTable",
+								"type": "DatasetReference"
+							},
+							"firstRowOnly": true
+						}
+					},
+					{
+						"name": "Copy Data to Blob",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Set Stoptime",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"typeProperties": {
+							"source": {
+								"type": "BlobSource",
+								"recursive": true
+							},
+							"sink": {
+								"type": "BlobSink",
+								"copyBehavior": "PreserveHierarchy"
+							},
+							"enableStaging": false,
+							"dataIntegrationUnits": 16,
+							"translator": {
+								"type": "TabularTranslator",
+								"columnMappings": {
+									"id": "id",
+									"datetime": "datetime",
+									"value": "value"
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "Telemetry_Blob_TimePartitioned",
+								"type": "DatasetReference",
+								"parameters": {
+									"StartTime": {
+										"value": "@variables('StartTime')",
+										"type": "Expression"
+									},
+									"EndTime": {
+										"value": "@variables('EndTime')",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ProcessedTelemetry",
+								"type": "DatasetReference"
+							}
+						]
+					},
+					{
+						"name": "Set Starttime",
+						"description": "Get the watermark from the last run, this will be the start of the next window. ",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Get Last Run Watermark",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"typeProperties": {
+							"variableName": "StartTime",
+							"value": {
+								"value": "@activity('Get Last Run Watermark').output.firstRow.WatermarkValue",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Set Stoptime",
+						"description": "Get the trigger time for the pipeline run. Files modified before this time will be copied. ",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Set Starttime",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"typeProperties": {
+							"variableName": "EndTime",
+							"value": {
+								"value": "@pipeline().TriggerTime",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Copy Data To SQL Incremental",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Set Stoptime",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"typeProperties": {
+							"source": {
+								"type": "BlobSource",
+								"recursive": true
+							},
+							"sink": {
+								"type": "SqlSink",
+								"writeBatchSize": 10000
+							},
+							"enableStaging": false,
+							"dataIntegrationUnits": 16,
+							"translator": {
+								"type": "TabularTranslator",
+								"columnMappings": {
+									"id": "id",
+									"datetime": "datetime",
+									"value": "value"
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "Telemetry_Blob_TimePartitioned",
+								"type": "DatasetReference",
+								"parameters": {
+									"StartTime": {
+										"value": "@variables('StartTime')",
+										"type": "Expression"
+									},
+									"EndTime": {
+										"value": "@variables('EndTime')",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "SQLServer_BradyLaptop",
+								"type": "DatasetReference"
+							}
+						]
+					}
+				],
+				"variables": {
+					"StartTime": {
+						"type": "String"
+					},
+					"EndTime": {
+						"type": "String"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/WatermarkTable')]",
+				"[concat(variables('factoryId'), '/datasets/Telemetry_Blob_TimePartitioned')]",
+				"[concat(variables('factoryId'), '/datasets/ProcessedTelemetry')]",
+				"[concat(variables('factoryId'), '/datasets/SQLServer_BradyLaptop')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Individual_Blobs_Meta_Data')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Get Metadata1",
+						"type": "GetMetadata",
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "Telemetry_Blob",
+								"type": "DatasetReference"
+							},
+							"fieldList": [
+								"childItems"
+							]
+						}
+					},
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Get Metadata1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Get Metadata1').output.childItems",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copy Data1",
+									"type": "Copy",
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"typeProperties": {
+										"source": {
+											"type": "BlobSource",
+											"recursive": false
+										},
+										"sink": {
+											"type": "BlobSink"
+										},
+										"enableStaging": false
+									},
+									"inputs": [
+										{
+											"referenceName": "Telemetry_SpecificBlob",
+											"type": "DatasetReference",
+											"parameters": {
+												"FileName": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "ProcessedTelemetry",
+											"type": "DatasetReference"
+										}
+									]
+								},
+								{
+									"name": "Delete1",
+									"type": "Delete",
+									"dependsOn": [
+										{
+											"activity": "Copy Data1",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"typeProperties": {
+										"dataset": {
+											"referenceName": "Telemetry_SpecificBlob",
+											"type": "DatasetReference",
+											"parameters": {
+												"FileName": "@item().name"
+											}
+										},
+										"enableLogging": false
+									}
+								}
+							]
+						}
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/Telemetry_Blob')]",
+				"[concat(variables('factoryId'), '/datasets/Telemetry_SpecificBlob')]",
+				"[concat(variables('factoryId'), '/datasets/ProcessedTelemetry')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ProcessedTelemetry')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorage1",
+					"type": "LinkedServiceReference"
+				},
+				"type": "AzureBlob",
+				"structure": [
+					{
+						"name": "id",
+						"type": "String"
+					},
+					{
+						"name": "datetime",
+						"type": "String"
+					},
+					{
+						"name": "value",
+						"type": "Double"
+					}
+				],
+				"typeProperties": {
+					"format": {
+						"type": "JsonFormat",
+						"filePattern": "setOfObjects",
+						"jsonPathDefinition": {
+							"id": "$.['id']",
+							"datetime": "$.['datetime']",
+							"value": "$.['value']"
+						}
+					},
+					"fileName": "",
+					"folderPath": "processed"
+				}
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SQLServer_BradyLaptop')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "BDLSQLServer",
+					"type": "LinkedServiceReference"
+				},
+				"type": "SqlServerTable",
+				"structure": [
+					{
+						"name": "id",
+						"type": "String"
+					},
+					{
+						"name": "datetime",
+						"type": "String"
+					},
+					{
+						"name": "value",
+						"type": "Double"
+					}
+				],
+				"typeProperties": {
+					"tableName": "[concat('[', 'dbo].[telemetry_2]')]"
+				}
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Telemetry')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorage1",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"StartTime": {
+						"type": "String",
+						"defaultValue": "NULL"
+					},
+					"EndTime": {
+						"type": "String",
+						"defaultValue": "NULL"
+					}
+				},
+				"type": "AzureBlob",
+				"structure": [
+					{
+						"name": "id",
+						"type": "String"
+					},
+					{
+						"name": "datetime",
+						"type": "String"
+					},
+					{
+						"name": "value",
+						"type": "Double"
+					}
+				],
+				"typeProperties": {
+					"format": {
+						"type": "JsonFormat",
+						"filePattern": "setOfObjects",
+						"jsonPathDefinition": {
+							"id": "$.['id']",
+							"datetime": "$.['datetime']",
+							"value": "$.['value']"
+						}
+					},
+					"fileName": "",
+					"folderPath": "flathierarchytelemetry",
+					"modifiedDatetimeStart": {
+						"value": "@if(not(equals(dataset().StartTime, NULL)), formatDateTime(dataset().StartTime), NULL)",
+						"type": "Expression"
+					},
+					"modifiedDatetimeEnd": {
+						"value": "@if(not(equals(dataset().EndTime, NULL)), formatDateTime(dataset().EndTime), NULL)",
+						"type": "Expression"
+					}
+				}
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Telemetry_Blob')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorage1",
+					"type": "LinkedServiceReference"
+				},
+				"type": "AzureBlob",
+				"structure": [
+					{
+						"name": "id",
+						"type": "String"
+					},
+					{
+						"name": "datetime",
+						"type": "String"
+					},
+					{
+						"name": "value",
+						"type": "Double"
+					}
+				],
+				"typeProperties": {
+					"format": {
+						"type": "JsonFormat",
+						"filePattern": "setOfObjects",
+						"jsonPathDefinition": {
+							"id": "$.['id']",
+							"datetime": "$.['datetime']",
+							"value": "$.['value']"
+						}
+					},
+					"fileName": "",
+					"folderPath": "flathierarchytelemetry"
+				}
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Telemetry_Blob_TimePartitioned')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorage1",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"StartTime": {
+						"type": "String",
+						"defaultValue": null
+					},
+					"EndTime": {
+						"type": "String",
+						"defaultValue": null
+					}
+				},
+				"type": "AzureBlob",
+				"structure": [
+					{
+						"name": "id",
+						"type": "String"
+					},
+					{
+						"name": "datetime",
+						"type": "String"
+					},
+					{
+						"name": "value",
+						"type": "Double"
+					}
+				],
+				"typeProperties": {
+					"format": {
+						"type": "JsonFormat",
+						"filePattern": "setOfObjects",
+						"jsonPathDefinition": {
+							"id": "$.['id']",
+							"datetime": "$.['datetime']",
+							"value": "$.['value']"
+						}
+					},
+					"fileName": "",
+					"folderPath": "timepartitionedtelemetry",
+					"modifiedDatetimeStart": {
+						"value": "@formatDateTime(dataset().StartTime)",
+						"type": "Expression"
+					},
+					"modifiedDatetimeEnd": {
+						"value": "@formatDateTime(dataset().EndTime)",
+						"type": "Expression"
+					}
+				}
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Telemetry_SpecificBlob')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorage1",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"FileName": {
+						"type": "String"
+					}
+				},
+				"type": "AzureBlob",
+				"typeProperties": {
+					"fileName": {
+						"value": "@dataset().FileName",
+						"type": "Expression"
+					},
+					"folderPath": "flathierarchytelemetry"
+				}
+			}
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/WatermarkTable')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "BDLSQLServer",
+					"type": "LinkedServiceReference"
+				},
+				"type": "SqlServerTable",
+				"structure": [
+					{
+						"name": "WatermarkValue",
+						"type": "DateTime"
+					}
+				],
+				"typeProperties": {
+					"tableName": "[concat('[', 'dbo].[watermarktable]')]"
+				}
+			}
+		}
+	]
+}

@@ -1,0 +1,134 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory Name",
+			"defaultValue": "bdl-data-factory"
+		},
+		"integrationRuntime_IntergrationRuntime-BradyLaptop": {
+			"type": "string",
+			"metadata": "Integration Runtime Name",
+			"defaultValue": "IntergrationRuntime-BradyLaptop"
+		},
+		"AzureBlobStorage1_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'AzureBlobStorage1'"
+		},
+		"BDLSQLServer_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'BDLSQLServer'"
+		},
+		"ProcessedTelemetry_properties_typeProperties_fileName": {
+			"type": "string",
+			"defaultValue": ""
+		},
+		"ProcessedTelemetry_properties_typeProperties_folderPath": {
+			"type": "string",
+			"defaultValue": "processed"
+		},
+		"Telemetry_properties_typeProperties_fileName": {
+			"type": "string",
+			"defaultValue": ""
+		},
+		"Telemetry_properties_typeProperties_folderPath": {
+			"type": "string",
+			"defaultValue": "flathierarchytelemetry"
+		},
+		"Telemetry_Blob_properties_typeProperties_fileName": {
+			"type": "string",
+			"defaultValue": ""
+		},
+		"Telemetry_Blob_properties_typeProperties_folderPath": {
+			"type": "string",
+			"defaultValue": "flathierarchytelemetry"
+		},
+		"Telemetry_Blob_TimePartitioned_properties_typeProperties_fileName": {
+			"type": "string",
+			"defaultValue": ""
+		},
+		"Telemetry_Blob_TimePartitioned_properties_typeProperties_folderPath": {
+			"type": "string",
+			"defaultValue": "timepartitionedtelemetry"
+		},
+		"Telemetry_SpecificBlob_properties_typeProperties_fileName": {
+			"type": "string",
+			"defaultValue": "@dataset().FileName"
+		},
+		"Telemetry_SpecificBlob_properties_typeProperties_folderPath": {
+			"type": "string",
+			"defaultValue": "flathierarchytelemetry"
+		},
+		"containerUri": {
+			"type": "string",
+			"metadata": "URI to storage account containing linked ARM templates"
+		},
+		"containerSasToken": {
+			"type": "string",
+			"metadata": "Sas Token to storage account containing linked ARM templates"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "ArmTemplate_0",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2018-02-01",
+			"properties": {
+				"mode": "incremental",
+				"templateLink": {
+					"uri": "[concat(parameters('containerUri'), '/ArmTemplate_0.json', parameters('containerSasToken'))]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"factoryName": {
+						"value": "[parameters('factoryName')]"
+					},
+					"integrationRuntime_IntergrationRuntime-BradyLaptop": {
+						"value": "[parameters('integrationRuntime_IntergrationRuntime-BradyLaptop')]"
+					},
+					"AzureBlobStorage1_connectionString": {
+						"value": "[parameters('AzureBlobStorage1_connectionString')]"
+					},
+					"BDLSQLServer_connectionString": {
+						"value": "[parameters('BDLSQLServer_connectionString')]"
+					},
+					"ProcessedTelemetry_properties_typeProperties_fileName": {
+						"value": "[parameters('ProcessedTelemetry_properties_typeProperties_fileName')]"
+					},
+					"ProcessedTelemetry_properties_typeProperties_folderPath": {
+						"value": "[parameters('ProcessedTelemetry_properties_typeProperties_folderPath')]"
+					},
+					"Telemetry_properties_typeProperties_fileName": {
+						"value": "[parameters('Telemetry_properties_typeProperties_fileName')]"
+					},
+					"Telemetry_properties_typeProperties_folderPath": {
+						"value": "[parameters('Telemetry_properties_typeProperties_folderPath')]"
+					},
+					"Telemetry_Blob_properties_typeProperties_fileName": {
+						"value": "[parameters('Telemetry_Blob_properties_typeProperties_fileName')]"
+					},
+					"Telemetry_Blob_properties_typeProperties_folderPath": {
+						"value": "[parameters('Telemetry_Blob_properties_typeProperties_folderPath')]"
+					},
+					"Telemetry_Blob_TimePartitioned_properties_typeProperties_fileName": {
+						"value": "[parameters('Telemetry_Blob_TimePartitioned_properties_typeProperties_fileName')]"
+					},
+					"Telemetry_Blob_TimePartitioned_properties_typeProperties_folderPath": {
+						"value": "[parameters('Telemetry_Blob_TimePartitioned_properties_typeProperties_folderPath')]"
+					},
+					"Telemetry_SpecificBlob_properties_typeProperties_fileName": {
+						"value": "[parameters('Telemetry_SpecificBlob_properties_typeProperties_fileName')]"
+					},
+					"Telemetry_SpecificBlob_properties_typeProperties_folderPath": {
+						"value": "[parameters('Telemetry_SpecificBlob_properties_typeProperties_folderPath')]"
+					}
+				}
+			},
+			"dependsOn": []
+		}
+	]
+}
