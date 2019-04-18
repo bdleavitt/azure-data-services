@@ -3,7 +3,7 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "Get Last Run Watermark",
+				"name": "Get Server Datetime",
 				"type": "Lookup",
 				"policy": {
 					"timeout": "7.00:00:00",
@@ -15,10 +15,10 @@
 				"typeProperties": {
 					"source": {
 						"type": "SqlSource",
-						"sqlReaderQuery": "select * from watermarktable"
+						"sqlReaderQuery": "select datetime()"
 					},
 					"dataset": {
-						"referenceName": "WatermarkTable",
+						"referenceName": "SQLServer_BradyLaptop",
 						"type": "DatasetReference"
 					},
 					"firstRowOnly": true
@@ -29,7 +29,7 @@
 				"type": "Copy",
 				"dependsOn": [
 					{
-						"activity": "Set Stoptime",
+						"activity": "Set Datetime Variable",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -49,33 +49,19 @@
 					},
 					"sink": {
 						"type": "BlobSink",
-						"copyBehavior": "PreserveHierarchy"
+						"copyBehavior": "MergeFiles"
 					},
 					"enableStaging": false,
 					"dataIntegrationUnits": 16,
 					"translator": {
-						"type": "TabularTranslator",
-						"columnMappings": {
-							"id": "id",
-							"datetime": "datetime",
-							"value": "value"
-						}
+						"value": "@json('{\n                            \"id\": \"id\",\n                            \"datetime\": \"@variables(EndTime)\",\n                            \"value\": \"value\"\n                        }')",
+						"type": "Expression"
 					}
 				},
 				"inputs": [
 					{
 						"referenceName": "Telemetry_Blob_TimePartitioned",
-						"type": "DatasetReference",
-						"parameters": {
-							"StartTime": {
-								"value": "@variables('StartTime')",
-								"type": "Expression"
-							},
-							"EndTime": {
-								"value": "@variables('EndTime')",
-								"type": "Expression"
-							}
-						}
+						"type": "DatasetReference"
 					}
 				],
 				"outputs": [
@@ -86,12 +72,27 @@
 				]
 			},
 			{
-				"name": "Set Starttime",
-				"description": "Get the watermark from the last run, this will be the start of the next window. ",
+				"name": "Set Made Up Value",
 				"type": "SetVariable",
 				"dependsOn": [
 					{
-						"activity": "Get Last Run Watermark",
+						"activity": "Get Server Datetime",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"typeProperties": {
+					"variableName": "MadeUpValue",
+					"value": "Your Mom"
+				}
+			},
+			{
+				"name": "Set Datetime Variable",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Set Made Up Value",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -100,98 +101,17 @@
 				"typeProperties": {
 					"variableName": "StartTime",
 					"value": {
-						"value": "@activity('Get Last Run Watermark').output.firstRow.WatermarkValue",
+						"value": "@activity('Get Server Datetime').output",
 						"type": "Expression"
 					}
 				}
-			},
-			{
-				"name": "Set Stoptime",
-				"description": "Get the trigger time for the pipeline run. Files modified before this time will be copied. ",
-				"type": "SetVariable",
-				"dependsOn": [
-					{
-						"activity": "Set Starttime",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"typeProperties": {
-					"variableName": "EndTime",
-					"value": {
-						"value": "@pipeline().TriggerTime",
-						"type": "Expression"
-					}
-				}
-			},
-			{
-				"name": "Copy Data To SQL Incremental",
-				"type": "Copy",
-				"dependsOn": [
-					{
-						"activity": "Set Stoptime",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "7.00:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"typeProperties": {
-					"source": {
-						"type": "BlobSource",
-						"recursive": true
-					},
-					"sink": {
-						"type": "SqlSink",
-						"writeBatchSize": 10000
-					},
-					"enableStaging": false,
-					"dataIntegrationUnits": 16,
-					"translator": {
-						"type": "TabularTranslator",
-						"columnMappings": {
-							"id": "id",
-							"datetime": "datetime",
-							"value": "value"
-						}
-					}
-				},
-				"inputs": [
-					{
-						"referenceName": "Telemetry_Blob_TimePartitioned",
-						"type": "DatasetReference",
-						"parameters": {
-							"StartTime": {
-								"value": "@variables('StartTime')",
-								"type": "Expression"
-							},
-							"EndTime": {
-								"value": "@variables('EndTime')",
-								"type": "Expression"
-							}
-						}
-					}
-				],
-				"outputs": [
-					{
-						"referenceName": "SQLServer_BradyLaptop",
-						"type": "DatasetReference"
-					}
-				]
 			}
 		],
 		"variables": {
-			"StartTime": {
+			"MadeUpValue": {
 				"type": "String"
 			},
-			"EndTime": {
+			"ServerTime": {
 				"type": "String"
 			}
 		}
