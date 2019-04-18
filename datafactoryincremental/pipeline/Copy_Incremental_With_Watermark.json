@@ -54,7 +54,7 @@
 					"enableStaging": false,
 					"dataIntegrationUnits": 16,
 					"translator": {
-						"value": "@json('{\n                            \"id\": \"id\",\n                            \"datetime\": utcnow(),\n                            \"value\": \"value\"\n                        }')",
+						"value": "@json('{\n                            \"id\": \"id\",\n                            \"datetime\": \"@utcnow()\",\n                            \"value\": \"value\"\n                        }')",
 						"type": "Expression"
 					}
 				},
