@@ -120,8 +120,12 @@
 					},
 					"enableStaging": false,
 					"translator": {
-						"value": "@json('{ \"@utcnow()\": \"id\",\n                \"datetime\": \"datetime\",\n                \"value\": \"value\"}')",
-						"type": "Expression"
+						"type": "TabularTranslator",
+						"columnMappings": {
+							"id": "id",
+							"datetime": "datetime",
+							"value": "value"
+						}
 					}
 				},
 				"inputs": [
