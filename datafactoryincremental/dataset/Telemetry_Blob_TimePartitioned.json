@@ -31,7 +31,7 @@
 				}
 			},
 			"fileName": "",
-			"folderPath": "timepartitionedtelemetry"
+			"folderPath": "timepartitionedtelemetry/2019/03/15/15/15"
 		}
 	},
 	"type": "Microsoft.DataFactory/factories/datasets"
