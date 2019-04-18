@@ -2,7 +2,7 @@
 	"name": "WatermarkTable",
 	"properties": {
 		"linkedServiceName": {
-			"referenceName": "SQLServer_BradyLaptop",
+			"referenceName": "BDLSQLServer",
 			"type": "LinkedServiceReference"
 		},
 		"type": "SqlServerTable",
