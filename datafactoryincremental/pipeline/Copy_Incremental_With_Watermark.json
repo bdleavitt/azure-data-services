@@ -52,7 +52,7 @@
 						"copyBehavior": "PreserveHierarchy"
 					},
 					"enableStaging": false,
-					"dataIntegrationUnits": 8,
+					"dataIntegrationUnits": 16,
 					"translator": {
 						"type": "TabularTranslator",
 						"columnMappings": {
@@ -153,7 +153,7 @@
 						"writeBatchSize": 10000
 					},
 					"enableStaging": false,
-					"dataIntegrationUnits": 8,
+					"dataIntegrationUnits": 16,
 					"translator": {
 						"type": "TabularTranslator",
 						"columnMappings": {
