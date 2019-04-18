@@ -5,16 +5,6 @@
 			"referenceName": "AzureBlobStorage1",
 			"type": "LinkedServiceReference"
 		},
-		"parameters": {
-			"StartTime": {
-				"type": "String",
-				"defaultValue": null
-			},
-			"EndTime": {
-				"type": "String",
-				"defaultValue": null
-			}
-		},
 		"type": "AzureBlob",
 		"structure": [
 			{

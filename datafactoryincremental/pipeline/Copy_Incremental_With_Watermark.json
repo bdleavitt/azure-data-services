@@ -29,7 +29,7 @@
 				"type": "Copy",
 				"dependsOn": [
 					{
-						"activity": "Set Datetime Variable",
+						"activity": "Set Made Up Value",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -85,25 +85,6 @@
 				"typeProperties": {
 					"variableName": "MadeUpValue",
 					"value": "Your Mom"
-				}
-			},
-			{
-				"name": "Set Datetime Variable",
-				"type": "SetVariable",
-				"dependsOn": [
-					{
-						"activity": "Set Made Up Value",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"typeProperties": {
-					"variableName": "StartTime",
-					"value": {
-						"value": "@activity('Get Server Datetime').output",
-						"type": "Expression"
-					}
 				}
 			}
 		],
