@@ -41,15 +41,7 @@
 				}
 			},
 			"fileName": "",
-			"folderPath": "timepartitionedtelemetry",
-			"modifiedDatetimeStart": {
-				"value": "@formatDateTime(dataset().StartTime)",
-				"type": "Expression"
-			},
-			"modifiedDatetimeEnd": {
-				"value": "@formatDateTime(dataset().EndTime)",
-				"type": "Expression"
-			}
+			"folderPath": "timepartitionedtelemetry"
 		}
 	},
 	"type": "Microsoft.DataFactory/factories/datasets"
