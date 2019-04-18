@@ -52,6 +52,7 @@
 						"copyBehavior": "PreserveHierarchy"
 					},
 					"enableStaging": false,
+					"dataIntegrationUnits": 4,
 					"translator": {
 						"type": "TabularTranslator",
 						"columnMappings": {
@@ -125,42 +126,6 @@
 				}
 			},
 			{
-				"name": "Update Watermark",
-				"description": "The new watermark is the latest pipeline start for the watermark. ",
-				"type": "SqlServerStoredProcedure",
-				"dependsOn": [
-					{
-						"activity": "Copy Data To SQL Incremental",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "7.00:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"typeProperties": {
-					"storedProcedureName": "dbo.update_watermark",
-					"storedProcedureParameters": {
-						"LastModifiedtime": {
-							"value": {
-								"value": "@variables('EndTime')",
-								"type": "Expression"
-							},
-							"type": "DateTime"
-						}
-					}
-				},
-				"linkedServiceName": {
-					"referenceName": "BDLSQLServer",
-					"type": "LinkedServiceReference"
-				}
-			},
-			{
 				"name": "Copy Data To SQL Incremental",
 				"type": "Copy",
 				"dependsOn": [
@@ -188,6 +153,7 @@
 						"writeBatchSize": 10000
 					},
 					"enableStaging": false,
+					"dataIntegrationUnits": 4,
 					"translator": {
 						"type": "TabularTranslator",
 						"columnMappings": {
