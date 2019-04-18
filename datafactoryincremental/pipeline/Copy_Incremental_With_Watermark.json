@@ -15,7 +15,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "SqlSource",
-						"sqlReaderQuery": "select datetime()"
+						"sqlReaderQuery": "select getdate()"
 					},
 					"dataset": {
 						"referenceName": "SQLServer_BradyLaptop",
@@ -54,7 +54,7 @@
 					"enableStaging": false,
 					"dataIntegrationUnits": 16,
 					"translator": {
-						"value": "@json('{\n                            \"id\": \"id\",\n                            \"datetime\": \"@variables(EndTime)\",\n                            \"value\": \"value\"\n                        }')",
+						"value": "@json('{\n                            \"id\": \"id\",\n                            \"datetime\": \"variables(ServerTime)\",\n                            \"value\": \"variables(MadeUpValue)\"\n                        }')",
 						"type": "Expression"
 					}
 				},
