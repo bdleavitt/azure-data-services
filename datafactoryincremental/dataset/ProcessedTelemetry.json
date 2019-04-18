@@ -2,7 +2,7 @@
 	"name": "ProcessedTelemetry",
 	"properties": {
 		"linkedServiceName": {
-			"referenceName": "BlobStorageAccount",
+			"referenceName": "AzureBlobStorage1",
 			"type": "LinkedServiceReference"
 		},
 		"type": "AzureBlob",
