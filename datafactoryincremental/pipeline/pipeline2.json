@@ -1,0 +1,231 @@
+{
+	"name": "pipeline2",
+	"properties": {
+		"activities": [
+			{
+				"name": "Get Last Run Watermark",
+				"type": "Lookup",
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"typeProperties": {
+					"source": {
+						"type": "SqlSource",
+						"sqlReaderQuery": "select * from watermarktable"
+					},
+					"dataset": {
+						"referenceName": "WatermarkTable",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": true
+				}
+			},
+			{
+				"name": "Copy Data to Blob",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Set Stoptime",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"typeProperties": {
+					"source": {
+						"type": "BlobSource",
+						"recursive": true
+					},
+					"sink": {
+						"type": "BlobSink",
+						"copyBehavior": "PreserveHierarchy"
+					},
+					"enableStaging": false,
+					"dataIntegrationUnits": 16,
+					"translator": {
+						"type": "TabularTranslator",
+						"columnMappings": {
+							"id": "id",
+							"datetime": "datetime",
+							"value": "value"
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "Telemetry_Blob_TimePartitioned",
+						"type": "DatasetReference",
+						"parameters": {
+							"StartTime": {
+								"value": "@variables('StartTime')",
+								"type": "Expression"
+							},
+							"EndTime": {
+								"value": "@variables('EndTime')",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ProcessedTelemetry",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Set Starttime",
+				"description": "Get the watermark from the last run, this will be the start of the next window. ",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Get Last Run Watermark",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"typeProperties": {
+					"variableName": "StartTime",
+					"value": {
+						"value": "@activity('Get Last Run Watermark').output.firstRow.WatermarkValue",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Set Stoptime",
+				"description": "Get the trigger time for the pipeline run. Files modified before this time will be copied. ",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Set Starttime",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"typeProperties": {
+					"variableName": "EndTime",
+					"value": {
+						"value": "@pipeline().TriggerTime",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Copy Data To SQL Incremental",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Set Stoptime",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"typeProperties": {
+					"source": {
+						"type": "BlobSource",
+						"recursive": true
+					},
+					"sink": {
+						"type": "SqlSink",
+						"writeBatchSize": 10000
+					},
+					"enableStaging": false,
+					"dataIntegrationUnits": 16,
+					"translator": {
+						"value": "@json('{\n                            \"id\": \"id\",\n                            \"datetime\": \"@utcnow()\",\n                            \"value\": \"value\"\n                        }')",
+						"type": "Expression"
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "Telemetry_Blob_TimePartitioned",
+						"type": "DatasetReference",
+						"parameters": {
+							"StartTime": {
+								"value": "@variables('StartTime')",
+								"type": "Expression"
+							},
+							"EndTime": {
+								"value": "@variables('EndTime')",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "SQLServer_BradyLaptop",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Update Watermark",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Copy Data To SQL Incremental",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[update_watermark]",
+					"storedProcedureParameters": {
+						"LastModifiedtime": {
+							"value": {
+								"value": "@variables('EndTime')",
+								"type": "Expression"
+							},
+							"type": "DateTime"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "BDLSQLServer",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"variables": {
+			"StartTime": {
+				"type": "String"
+			},
+			"EndTime": {
+				"type": "String"
+			}
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
