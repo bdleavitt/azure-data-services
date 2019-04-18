@@ -2,7 +2,7 @@
 	"name": "Telemetry_Blob_TimePartitioned",
 	"properties": {
 		"linkedServiceName": {
-			"referenceName": "BlobStorageAccount",
+			"referenceName": "AzureBlobStorage1",
 			"type": "LinkedServiceReference"
 		},
 		"parameters": {
